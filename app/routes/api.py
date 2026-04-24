@@ -22,10 +22,17 @@ def api_report(project_key):
         issues = fetch_issues(project_key)
         print(f"Issues fetched: {len(issues)} items")
 
+        # Fetch last analysis date
+        from app.services.sonar import fetch_last_analysis_date
+        analysis_date = fetch_last_analysis_date(project_key)
+
         # Save to database in the background (or rather, synchronously before returning)
         try:
-            save_data(project_key, metrics, quality, ratings, issues)
-            print("Data saved to database successfully")
+            inserted = save_data(project_key, metrics, quality, ratings, issues, analysis_date)
+            if inserted:
+                print(f"New scan analysis detected and saved to DB: {analysis_date}")
+            else:
+                print(f"Scan already exists in DB for analysis date: {analysis_date}. Skipped inserting duplicate.")
         except Exception as e:
             print(f"Failed to save data to DB: {e}")
 
@@ -46,6 +53,9 @@ def api_report(project_key):
 @api_bp.route("/api/metrics_history/<project_key>", methods=["GET"])
 def api_metrics_history(project_key):
     try:
+        from app.services.database import sync_project_history
+        sync_project_history(project_key)
+
         conn = db_conn()
         cur = conn.cursor(dictionary=True)
         cur.execute(

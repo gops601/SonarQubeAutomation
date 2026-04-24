@@ -806,10 +806,14 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="topbar">
-            <div class="topbar-title" id="topbarTitle">Select a Project</div>
-            <button id="graphicalAnalysisBtn" class="view-all-btn" style="display: none;"
+            <div class="topbar-title" id="topbarTitle">Scan History</div>
+            <button id="graphicalAnalysisBtn" class="graph-btn" 
+                style="padding: 10px 20px; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); display: flex; align-items: center; gap: 8px;"
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(139, 92, 246, 0.4)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(139, 92, 246, 0.3)';"
                 onclick="openGraphicalAnalysis()">
-                📊 Graphical Analysis
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                Graphical Analysis
             </button>
         </div>
 
@@ -850,6 +854,21 @@
             </div>
         </div>
 
+    <!-- Graphical Analysis Modal -->
+    <div id="graphicalAnalysisModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px; padding: 0;">
+            <div class="modal-header">
+                <h2>Graphical Analysis - Metrics Trend</h2>
+                <button class="close-btn" onclick="document.getElementById('graphicalAnalysisModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <canvas id="metricHistoryChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
         const PROJECT_KEY = '{{ project_key }}';
 
@@ -926,24 +945,40 @@
             const tbody = document.getElementById('historyTableBody');
             if (!history || history.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="padding: 40px; text-align: center; color: var(--text-secondary);">No scan history available for this project.</td></tr>';
-                return;
+                return 0;
             }
 
-            const sorted = history.sort((a,b) => parseDateSafely(b.scan_date) - parseDateSafely(a.scan_date));
-            
-            tbody.innerHTML = '';
-            sorted.forEach(item => {
-                const dt = parseDateSafely(item.scan_date);
-                const dtStr = formatDateTime(dt);
+            // Group by date
+            const groupedByDate = {};
+            history.forEach(item => {
+                const dtStr = formatDateTime(parseDateSafely(item.scan_date)).split(' ')[0];
+                if (!groupedByDate[dtStr]) {
+                    groupedByDate[dtStr] = { count: 0, issues: 0, smells: 0, vulns: 0, coverage: 0, timestamp: parseDateSafely(item.scan_date) };
+                }
+                groupedByDate[dtStr].count += 1;
+                groupedByDate[dtStr].issues += (item.total_issues || 0);
+                groupedByDate[dtStr].smells += (item.code_smells || 0);
+                groupedByDate[dtStr].vulns += (item.vulnerabilities || 0);
+                groupedByDate[dtStr].coverage += parseFloat(item.code_coverage || 0);
+            });
 
-                const total = item.total_issues || 0;
-                const smells = item.code_smells || 0;
-                const vulns = item.vulnerabilities || 0;
-                const cov = parseFloat(item.code_coverage || 0).toFixed(1);
+            // Convert to array and sort descending (newest to oldest)
+            const sortedDates = Object.values(groupedByDate).sort((a,b) => b.timestamp - a.timestamp);
+
+            tbody.innerHTML = '';
+            sortedDates.forEach(item => {
+                const dtStr = formatDateTime(item.timestamp).split(' ')[0]; // Just the date string
+
+                const total = Math.round(item.issues / item.count);
+                const smells = Math.round(item.smells / item.count);
+                const vulns = Math.round(item.vulns / item.count);
+                const cov = (item.coverage / item.count).toFixed(1);
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="padding: 16px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); font-weight: 500;">${dtStr}</td>
+                    <td style="padding: 16px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); font-weight: 500;">
+                        ${dtStr} <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:8px;">(Avg of ${item.count} scans)</span>
+                    </td>
                     <td style="padding: 16px; border-bottom: 1px solid var(--border-color); font-weight: 700; color: var(--accent-primary);">${total}</td>
                     <td style="padding: 16px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--accent-warning);">${smells}</td>
                     <td style="padding: 16px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--accent-danger);">${vulns}</td>
@@ -951,20 +986,115 @@
                 `;
                 tbody.appendChild(tr);
             });
+            
+            return sortedDates.length;
         }
 
         function loadHistory() {
             fetch(`/api/metrics_history/${encodeURIComponent(PROJECT_KEY)}`)
                 .then(response => response.json())
                 .then(data => {
-                    const historyData = data.history || [];
-                    renderTable(historyData);
-                    document.getElementById('historyMessage').innerText = `Showing latest ${historyData.length} records.`;
+                    window.historyData = data.history || [];
+                    const groupedCount = renderTable(window.historyData);
+                    document.getElementById('historyMessage').innerText = `Showing average records for ${groupedCount} days (Total Scans: ${window.historyData.length}).`;
                 })
                 .catch(error => {
                     console.error('Error loading metric history:', error);
                     document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="5" style="padding: 40px; text-align: center; color: var(--accent-danger);">Error fetching history data!</td></tr>';
                 });
+        }
+        
+        let metricChartInstance = null;
+        function openGraphicalAnalysis() {
+            if (!window.historyData || window.historyData.length === 0) {
+                alert('No scan history available to display graph.');
+                return;
+            }
+
+            document.getElementById('graphicalAnalysisModal').style.display = 'flex';
+            
+            // Sort ascending for chart (oldest to newest)
+            const sortedData = [...window.historyData].sort((a,b) => parseDateSafely(a.scan_date) - parseDateSafely(b.scan_date));
+            
+            // Group by date and calculate averages
+            const groupedByDate = {};
+            sortedData.forEach(d => {
+                const dateStr = formatDateTime(parseDateSafely(d.scan_date)).split(' ')[0]; // Gets the date part
+                if (!groupedByDate[dateStr]) {
+                    groupedByDate[dateStr] = { count: 0, issues: 0, smells: 0, vulns: 0 };
+                }
+                groupedByDate[dateStr].count += 1;
+                groupedByDate[dateStr].issues += (d.total_issues || 0);
+                groupedByDate[dateStr].smells += (d.code_smells || 0);
+                groupedByDate[dateStr].vulns += (d.vulnerabilities || 0);
+            });
+
+            const labels = Object.keys(groupedByDate);
+            const issuesData = labels.map(date => Math.round(groupedByDate[date].issues / groupedByDate[date].count));
+            const smellsData = labels.map(date => Math.round(groupedByDate[date].smells / groupedByDate[date].count));
+            const vulnsData = labels.map(date => Math.round(groupedByDate[date].vulns / groupedByDate[date].count));
+
+            const ctx = document.getElementById('metricHistoryChart').getContext('2d');
+            if (metricChartInstance) {
+                metricChartInstance.destroy();
+            }
+
+            Chart.register(ChartDataLabels);
+            metricChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Avg Total Issues',
+                            data: issuesData,
+                            backgroundColor: 'rgba(14, 165, 233, 0.6)',
+                            borderColor: 'rgba(14, 165, 233, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Avg Code Smells',
+                            data: smellsData,
+                            backgroundColor: 'rgba(234, 88, 12, 0.6)',
+                            borderColor: 'rgba(234, 88, 12, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Avg Vulnerabilities',
+                            data: vulnsData,
+                            backgroundColor: 'rgba(225, 29, 72, 0.6)',
+                            borderColor: 'rgba(225, 29, 72, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        datalabels: {
+                            color: '#475569',
+                            anchor: 'end',
+                            align: 'top',
+                            font: {
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('graphicalAnalysisModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
         }
         
         document.addEventListener('DOMContentLoaded', loadHistory);

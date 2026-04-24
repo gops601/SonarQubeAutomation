@@ -29,8 +29,8 @@ def dashboard():
     users_count = len(grouped_projects)
     projects_count = sum(len(projs) for projs in grouped_projects.values())
     
-    from app.services.database import get_total_scans
-    scans_count = get_total_scans()
+    from app.services.sonar import fetch_total_sonarqube_scans
+    scans_count = fetch_total_sonarqube_scans(projects_raw)
 
     return render_template("dashboard.html", 
                            grouped_projects=grouped_projects, 

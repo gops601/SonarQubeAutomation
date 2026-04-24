@@ -144,3 +144,41 @@ def fetch_issues(project_key):
 
     print(f"Successfully fetched {len(all_issues)} total issues")
     return all_issues
+
+def fetch_last_analysis_date(project_key):
+    try:
+        r = requests.get(
+            f"{Config.SONAR_URL}/api/project_analyses/search",
+            params={"project": project_key, "ps": 1},
+            auth=(Config.TOKEN, "")
+        )
+        r.raise_for_status()
+        analyses = r.json().get("analyses", [])
+        if analyses:
+            return analyses[0].get("date")
+        return None
+    except Exception as e:
+        print(f"Error fetching last analysis date: {e}")
+        return None
+
+def fetch_total_sonarqube_scans(projects):
+    """
+    Given a list of project dictionaries (from fetch_projects),
+    queries the total number of analyses for each and returns the sum.
+    """
+    total = 0
+    for p in projects:
+        try:
+            project_key = p.get("key")
+            if not project_key: continue
+            
+            r = requests.get(
+                f"{Config.SONAR_URL}/api/project_analyses/search",
+                params={"project": project_key, "ps": 1},
+                auth=(Config.TOKEN, "")
+            )
+            r.raise_for_status()
+            total += r.json().get("paging", {}).get("total", 0)
+        except Exception as e:
+            print(f"Error fetching analyses count for {project_key}: {e}")
+    return total
