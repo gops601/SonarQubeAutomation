@@ -1149,7 +1149,12 @@
         function populateDashboard(data) {
             const qgStatus = data.quality.status || 'UNKNOWN';
             const qgEl = document.getElementById('valQualityGate');
-            qgEl.innerText = qgStatus;
+            
+            let displayStatus = qgStatus;
+            if (qgStatus === 'OK') displayStatus = 'Success';
+            else if (qgStatus === 'ERROR') displayStatus = 'Failed';
+            
+            qgEl.innerText = displayStatus;
             qgEl.className = 'qg-status';
             if (qgStatus === 'OK') qgEl.classList.add('status-ok');
             else if (qgStatus === 'ERROR') qgEl.classList.add('status-error');
