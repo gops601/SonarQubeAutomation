@@ -26,7 +26,17 @@ def dashboard():
             'email': user_email
         })
 
-    return render_template("dashboard.html", grouped_projects=grouped_projects)
+    users_count = len(grouped_projects)
+    projects_count = sum(len(projs) for projs in grouped_projects.values())
+    
+    from app.services.database import get_total_scans
+    scans_count = get_total_scans()
+
+    return render_template("dashboard.html", 
+                           grouped_projects=grouped_projects, 
+                           users_count=users_count, 
+                           projects_count=projects_count, 
+                           scans_count=scans_count)
 
 @ui_bp.route("/scan_history/<project_key>", methods=["GET"])
 def scan_history(project_key):

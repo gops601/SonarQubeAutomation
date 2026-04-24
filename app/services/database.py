@@ -69,28 +69,14 @@ def save_data(project_key, metrics, quality, ratings, issues):
     total_issues = bugs + code_smells + vulnerabilities
     coverage = metrics.get("coverage", 0)
 
-    # Check if a scan already exists for this project today
-    cur.execute(
-        "SELECT id FROM scans WHERE project_name = %s AND DATE(scan_date) = %s LIMIT 1",
-        (project_key, today_date)
-    )
-    existing_scan = cur.fetchone()
-
-    if existing_scan:
-        cur.execute("""
-        UPDATE scans SET 
-            total_issues = %s, code_smells = %s, vulnerabilities = %s, code_coverage = %s, scan_date = %s
-        WHERE id = %s
-        """, (total_issues, code_smells, vulnerabilities, coverage, scan_date, existing_scan[0]))
-    else:
-        cur.execute("""
-        INSERT INTO scans (
-            username, project_name, total_issues, code_smells, 
-            vulnerabilities, code_coverage, scan_date
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            username, project_key, total_issues, code_smells, vulnerabilities, coverage, scan_date
-        ))
+    cur.execute("""
+    INSERT INTO scans (
+        username, project_name, total_issues, code_smells, 
+        vulnerabilities, code_coverage, scan_date
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (
+        username, project_key, total_issues, code_smells, vulnerabilities, coverage, scan_date
+    ))
 
     conn.commit()
     cur.close()
@@ -128,3 +114,19 @@ def fetch_issues_from_db(project_key, issue_type=None, severity=None):
     cur.close()
     conn.close()
     return issues
+
+def get_total_scans():
+    """
+    Returns the total number of scans executed and saved in the database.
+    """
+    try:
+        conn = db_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(id) FROM scans")
+        count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return count
+    except Exception as e:
+        print(f"Error fetching total scans: {e}")
+        return 0

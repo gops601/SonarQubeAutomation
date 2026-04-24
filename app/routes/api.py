@@ -50,7 +50,7 @@ def api_metrics_history(project_key):
         cur = conn.cursor(dictionary=True)
         cur.execute(
             "SELECT scan_date, total_issues, code_smells, vulnerabilities, code_coverage "
-            "FROM scans WHERE project_name = %s ORDER BY scan_date ASC LIMIT 30",
+            "FROM scans WHERE project_name = %s ORDER BY scan_date DESC LIMIT 500",
             (project_key,)
         )
         history = cur.fetchall()

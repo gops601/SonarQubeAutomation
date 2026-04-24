@@ -829,6 +829,37 @@
 
 
         <div class="dashboard-container">
+            
+            <!-- Dynamic KPIs -->
+            <div class="kpi-banner" style="display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 32px; animation: fadeIn 0.4s ease-out;">
+                <div class="kpi-card" style="flex: 1; min-width: 250px; background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; transition: transform 0.2s;">
+                    <div style="background: rgba(14, 165, 233, 0.1); padding: 16px; border-radius: 12px; color: var(--accent-primary);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Total Users</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">{{ users_count }}</div>
+                    </div>
+                </div>
+                <div class="kpi-card" style="flex: 1; min-width: 250px; background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; transition: transform 0.2s;">
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 16px; border-radius: 12px; color: var(--accent-success);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Total Projects</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">{{ projects_count }}</div>
+                    </div>
+                </div>
+                <div class="kpi-card" style="flex: 1; min-width: 250px; background: var(--bg-surface); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; transition: transform 0.2s;">
+                    <div style="background: rgba(139, 92, 246, 0.1); padding: 16px; border-radius: 12px; color: #8b5cf6;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Total Scans</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);">{{ scans_count }}</div>
+                    </div>
+                </div>
+            </div>
 
             <div class="empty-state" id="emptyState">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1180,11 +1211,11 @@
                 <div class="issue-preview-item">
                     <div class="issue-header">
                         <span class="issue-severity severity-${issue.severity}">${issue.severity}</span>
-                        <span class="issue-key">${issue.issue_key}</span>
-                        <span class="issue-details">${issue.category || issue.type || 'UNKNOWN'}</span>
+                        <span class="issue-key">${issue.key || 'Unknown Key'}</span>
+                        <span class="issue-details">${issue.type || 'UNKNOWN'}</span>
                     </div>
                     <div class="issue-message">${issue.message}</div>
-                    <div class="issue-details">${issue.component || issue.file || 'Unknown location'}${issue.line ? ` - Line ${issue.line}` : ''}</div>
+                    <div class="issue-details">${issue.component || 'Unknown location'}${issue.line ? ` - Line ${issue.line}` : ''}</div>
                 </div>
             `).join('');
         }
@@ -1258,20 +1289,20 @@
             let html = '';
             issues.forEach(issue => {
                 const issueType = issue.type ? issue.type.replace('_', ' ') : 'UNKNOWN';
-                const issueCategory = issue.category || 'UNKNOWN';
+                const issueRule = issue.rule || 'UNKNOWN';
                 html += `
                     <div class="issue-item">
                         <div class="issue-header">
                             <span class="issue-severity severity-${issue.severity}">${issue.severity}</span>
-                            <span class="issue-key">${issue.issue_key}</span>
+                            <span class="issue-key">${issue.key || 'Unknown Key'}</span>
                             <span class="issue-details" style="margin-left:auto; font-weight:600; color:var(--text-primary);">${issueType}</span>
                         </div>
                         <div class="issue-message">${issue.message}</div>
                         <div class="issue-details">
-                            ${issue.component || issue.file || 'Unknown location'}${issue.line ? ` - Line ${issue.line}` : ''}
+                            ${issue.component || 'Unknown location'}${issue.line ? ` - Line ${issue.line}` : ''}
                         </div>
                         <div class="issue-details">
-                            Category: ${issueCategory}${issue.status ? ` • Status: ${issue.status}` : ''}${issue.rule ? ` • Rule: ${issue.rule}` : ''}
+                            Rule: ${issueRule}${issue.status ? ` • Status: ${issue.status}` : ''}
                         </div>
                     </div>
                 `;
