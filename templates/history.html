@@ -786,10 +786,9 @@
                 </div>
                 <div class="user-projects">
                     {% for p in projs %}
-                    <div class="project-item" data-key="{{ p.key }}" data-name="{{ p.original_name }}"
+                    <div class="project-item" data-key="{{ p.key }}" data-name="{{ p.name }}"
                         data-search="{{ p.name|lower }}" onclick="selectProject(this)">
                         <div class="project-name">{{ p.name }}</div>
-                        <div class="project-key">{{ p.key }}</div>
                     </div>
                     {% endfor %}
                 </div>
