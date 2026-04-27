@@ -125,3 +125,27 @@ def api_issues(project_key):
         return jsonify({"issues": all_issues})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@api_bp.route("/api/issue_source/<project_key>", methods=["GET"])
+def api_issue_source(project_key):
+    component = request.args.get('component')
+    line = request.args.get('line', type=int)
+    if not component or not line:
+        return jsonify({"error": "Missing component or line"}), 400
+
+    try:
+        from app.config import Config
+        import requests
+        
+        start_line = max(1, line - 5)
+        end_line = line + 5
+        
+        r = requests.get(
+            f"{Config.SONAR_URL}/api/sources/lines",
+            params={'key': component, 'from': start_line, 'to': end_line},
+            auth=(Config.TOKEN, '')
+        )
+        r.raise_for_status()
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

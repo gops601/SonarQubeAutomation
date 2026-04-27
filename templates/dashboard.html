@@ -603,6 +603,56 @@
             margin-top: 8px;
         }
 
+        .issue-source-container {
+            margin-top: 12px;
+            background: #1e1e1e;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            display: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+        }
+        
+        .issue-source-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .source-line {
+            display: flex;
+            padding: 2px 0;
+            color: #d4d4d4;
+        }
+
+        .source-line.highlight {
+            background-color: rgba(239, 68, 68, 0.15);
+            border-left: 3px solid var(--accent-danger);
+        }
+
+        .source-line-num {
+            width: 40px;
+            text-align: right;
+            padding-right: 12px;
+            color: #858585;
+            user-select: none;
+            border-right: 1px solid #404040;
+            margin-right: 12px;
+        }
+
+        .source-code {
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .clickable-issue {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .clickable-issue:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
         .metrics-row span.metric-label {
             display: block;
         }
@@ -988,6 +1038,14 @@
 
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer style="text-align: center; padding: 24px 0; font-size: 0.85rem; color: var(--text-secondary); margin-top: auto;">
+            <p style="margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                &copy; <script>document.write(new Date().getFullYear())</script> ICT Academy of Kerala. All rights reserved.
+            </p>
+        </footer>
     </div>
 
     <!-- Global Scans Modal -->
@@ -1211,8 +1269,10 @@
 
             card.style.display = 'block';
             const sample = issues.slice(0, 5);
-            preview.innerHTML = sample.map(issue => `
-                <div class="issue-preview-item">
+            preview.innerHTML = sample.map(issue => {
+                const clickable = issue.line ? `class="issue-preview-item clickable-issue" onclick="fetchIssueSource(this, '${issue.project || currentProjectKey}', '${issue.component}', ${issue.line})"` : `class="issue-preview-item"`;
+                return `
+                <div ${clickable}>
                     <div class="issue-header">
                         <span class="issue-severity severity-${issue.severity}">${issue.severity}</span>
                         <span class="issue-key">${issue.key || 'Unknown Key'}</span>
@@ -1220,8 +1280,9 @@
                     </div>
                     <div class="issue-message">${issue.message}</div>
                     <div class="issue-details">${issue.component || 'Unknown location'}${issue.line ? ` - Line ${issue.line}` : ''}</div>
+                    <div class="issue-source-container"></div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function setRating(elementId, ratingValue) {
@@ -1294,8 +1355,9 @@
             issues.forEach(issue => {
                 const issueType = issue.type ? issue.type.replace('_', ' ') : 'UNKNOWN';
                 const issueRule = issue.rule || 'UNKNOWN';
+                const clickable = issue.line ? `class="issue-item clickable-issue" onclick="fetchIssueSource(this, '${issue.project || currentProjectKey}', '${issue.component}', ${issue.line})"` : `class="issue-item"`;
                 html += `
-                    <div class="issue-item">
+                    <div ${clickable}>
                         <div class="issue-header">
                             <span class="issue-severity severity-${issue.severity}">${issue.severity}</span>
                             <span class="issue-key">${issue.key || 'Unknown Key'}</span>
@@ -1308,10 +1370,58 @@
                         <div class="issue-details">
                             Rule: ${issueRule}${issue.status ? ` • Status: ${issue.status}` : ''}
                         </div>
+                        <div class="issue-source-container"></div>
                     </div>
                 `;
             });
             container.innerHTML = html;
+        }
+
+        function fetchIssueSource(element, projectKey, component, line) {
+            const container = element.querySelector('.issue-source-container');
+            if (!container) return;
+            
+            if (container.classList.contains('active')) {
+                container.classList.remove('active');
+                return; // Toggle off
+            }
+            
+            // Close any other open containers
+            document.querySelectorAll('.issue-source-container').forEach(c => c.classList.remove('active'));
+
+            container.innerHTML = '<div style="padding: 12px; color: var(--text-secondary); text-align: center;">Fetching source...</div>';
+            container.classList.add('active');
+
+            fetch(`/api/issue_source/${encodeURIComponent(projectKey)}?component=${encodeURIComponent(component)}&line=${line}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        container.innerHTML = `<div style="padding: 12px; color: var(--accent-danger); text-align: center;">Error: ${data.error}</div>`;
+                        return;
+                    }
+                    if (!data.sources || data.sources.length === 0) {
+                        container.innerHTML = `<div style="padding: 12px; color: var(--text-secondary); text-align: center;">Source code not available.</div>`;
+                        return;
+                    }
+
+                    let html = '<div class="source-code" style="padding: 8px 0;">';
+                    data.sources.forEach(src => {
+                        const isHighlight = src.line === line;
+                        const lineClass = isHighlight ? 'source-line highlight' : 'source-line';
+                        html += `
+                            <div class="${lineClass}">
+                                <div class="source-line-num">${src.line}</div>
+                                <div style="flex: 1;">${src.code || ''}</div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error("Failed to fetch source", err);
+                    container.innerHTML = `<div style="padding: 12px; color: var(--accent-danger); text-align: center;">Failed to load source code.</div>`;
+                });
         }
 
         // Close modal when clicking outside
