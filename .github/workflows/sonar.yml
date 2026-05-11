@@ -138,12 +138,12 @@ jobs:
         if: steps.detect.outputs.type == 'react'
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_HOST_URL: http://187.127.142.34:9000/
+          SONAR_HOST_URL: http://192.168.1.94:9002/
         with:
           args: >
             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.sources=src
-            -Dsonar.login=squ_a59d4fc58ecbab4929240640afa96a317bfd9a12
+            -Dsonar.login=squ_a59251231b8d79067dae75f6c65caf30a0b94d4a
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.exclusions=node_modules/**,build/**,dist/**
 
@@ -154,12 +154,12 @@ jobs:
         if: steps.detect.outputs.type == 'python' || steps.detect.outputs.type == 'flask'
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_HOST_URL: http://187.127.142.34:9000/
+          SONAR_HOST_URL: http://192.168.1.94:9002/
         with:
           args: >
             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.sources=.
-            -Dsonar.login=squ_a59d4fc58ecbab4929240640afa96a317bfd9a12
+            -Dsonar.login=squ_a59251231b8d79067dae75f6c65caf30a0b94d4a
             -Dsonar.python.coverage.reportPaths=coverage.xml
             -Dsonar.exclusions=**/__pycache__/**,**/*.pyc,node_modules/**
 
@@ -170,9 +170,9 @@ jobs:
         if: steps.detect.outputs.type == 'unknown'
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_HOST_URL: http://187.127.142.34:9000/
+          SONAR_HOST_URL: http://192.168.1.94:9002/
         with:
           args: >
             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.sources=.
-            -Dsonar.login=squ_a59d4fc58ecbab4929240640afa96a317bfd9a12
+            -Dsonar.login=squ_a59251231b8d79067dae75f6c65caf30a0b94d4a
